@@ -2,8 +2,10 @@ name: Update price image
 
 on:
   schedule:
-    # every hour at :07 (GitHub may start scheduled runs a few minutes late)
-    - cron: "7 * * * *"
+    # Tomorrow's prices are published around 14:00 Finnish time.
+    # Cron uses UTC: 13/14/15 UTC = 15/16/17 in winter (EET), 16/17/18 in summer (EEST).
+    # 18 UTC is an extra run in case the earlier ones are delayed or fail.
+    - cron: "5 13,14,15,18 * * *"
   workflow_dispatch:        # "Run workflow" button for manual runs
   push:
     branches: [main]

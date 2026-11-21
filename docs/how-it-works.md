@@ -12,6 +12,15 @@
   merging the repeated hour.
 - Tomorrow's prices are published around 14:00 Finnish time.
 
+## Schedule
+
+The workflow runs at 13:05, 14:05, 15:05 and 18:05 UTC, i.e. 15–17 (+20) Finnish time in
+winter and one hour later in summer. All runs are after the ~14:00 publication of tomorrow's
+prices; the extra run covers delays. The Kindle starts looking for tomorrow's images at 18:00.
+If it was not used in the evening, the first wake-up on Wi-Fi the next day finds the current
+hour's image missing and downloads it (the site still holds today's images from the previous
+afternoon's run).
+
 ## Hourly frames
 
 Prices for a day are published around 14:00 the day before and do not change, so the
@@ -80,9 +89,10 @@ suspended and cost nothing then.
 
 `tick`:
 
-1. **Download if needed** – when the current hour's frame is missing, or after 15:00 when
-   tomorrow's frames are not there yet, and Wi-Fi is connected (`lipc-get-prop
-   com.lab126.wifid cmState`). At most one attempt per 30 minutes. Fetches `manifest.txt`,
+1. **Download if needed** – when the current hour's frame is missing, or after 18:00 when
+   tomorrow's frames are not there yet. Right after a wake-up Wi-Fi takes a few seconds to
+   reconnect, so it waits up to 30 s for `lipc-get-prop com.lab126.wifid cmState` to report
+   `CONNECTED`. At most one attempt per 30 minutes. Fetches `manifest.txt`,
    downloads only missing frames, validates each one, deletes frames from previous days.
 2. **Show the current hour** – if `frames/$(date +%Y%m%d-%H).png` is not the one already
    shown, copy it into the 20 slots.

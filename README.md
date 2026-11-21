@@ -12,45 +12,42 @@ Kindle Paperwhite 3, while still reading normally in the stock Kindle reader.
 
 [中文说明](docs/README.zh-CN.md)
 
+## How it works
+
+```
+ spot-hinta.fi  ──►  GitHub Actions  ──►  GitHub Pages  ──►  Kindle lock screen
+ (Nord Pool FI)      renders 48 hourly     hosts the         downloads once a day,
+                     e-ink images/day      images            switches every hour offline
+```
+
+- **Cloud:** after tomorrow's prices are published (~14:00), a GitHub Actions job renders one
+  image per hour for today and tomorrow and publishes them on GitHub Pages. Free, no server.
+- **Kindle:** a scriptlet covers the stock lock-screen folder with a bind mount (the system
+  partition is never modified). While the Kindle is awake, a small updater downloads new images
+  in the evening and shows the right one for the current hour, without needing Wi-Fi.
+
+Details: [docs/how-it-works.md](docs/how-it-works.md)
+
 ## What it shows
 
 - **Today's 24 hourly prices** (average of the four 15-minute prices), in c/kWh including VAT
 - **Gray level per 4 c/kWh**, from white (< 4) to black (≥ 40); dashed lines at 8 c ("cheap") and 20 c ("expensive")
 - **Current hour** marked with a triangle; the hour is also printed in the corner, so a stale lock screen is easy to spot
 - **Highest / lowest hour** of the day
-- **Best 2-hour laundry window**: the cheapest continuous 2 hours between 07:00 and 22:00 in the rest of the day; late in the evening it switches to tomorrow (once tomorrow's prices are published, around 14:00)
+- **Best 2-hour laundry window**: the cheapest continuous 2 hours between 07:00 and 22:00 in the rest of the day; late in the evening it switches to tomorrow
 
-## How it works
+### Update schedule
 
-Day-ahead prices are fixed a day in advance, so everything can be rendered ahead of time.
-
-```
-spot-hinta.fi API ──► GitHub Actions (hourly) ──► render.py ──► GitHub Pages
- (Nord Pool FI,        installs fonts, runs        one image      frames/YYYYMMDD-HH.png
-  15-min prices)       tests, renders              per hour       frames/manifest.txt
-                                                                  prices.json
-                                                                       │ once a day
-                                     Kindle Paperwhite 3 ◄─────────────┘
-                                     swaps in the image for the current
-                                     hour - no network needed
-```
-
-1. **Cloud side** – a GitHub Actions workflow fetches the prices, renders one image per hour
-   for today and tomorrow (tomorrow appears after ~14:00) and publishes them to GitHub Pages.
-   Each image marks its own hour as "now" and shows the laundry window for the rest of that day.
-   No server to maintain.
-2. **Kindle side** – a scriptlet bind-mounts a folder on internal storage over
-   `/usr/share/blanket/screensaver`. The system partition is never modified; a reboot restores
-   the original lock screen. A small updater, which only runs while the Kindle is awake:
-   - downloads the frames when Wi-Fi is on and images are missing (normally once a day,
-     e.g. while you read in the evening);
-   - puts the current hour's image in place at every full hour and right after the
-     Kindle wakes up.
+| When (Finnish time) | What happens |
+|---|---|
+| ~14:00 | Nord Pool publishes tomorrow's prices |
+| 15:00, 16:00, 17:00 (+ 20:00 backup) | GitHub Actions renders today + tomorrow (one hour later in summer, cron runs in UTC) |
+| after 18:00, Kindle awake on Wi-Fi | Kindle downloads tomorrow's images, deletes the previous day's |
+| every full hour / on wake-up | Kindle shows the current hour's image (no network) |
+| Kindle missed the evening | the next time it wakes on Wi-Fi it downloads the missing images |
 
 While the Kindle sleeps nothing runs, so the lock screen shows the hour in which it was locked.
 Waking up briefly every hour to redraw (no Wi-Fi needed) is on the roadmap.
-
-More detail, including what the Kindle looks like inside: [docs/how-it-works.md](docs/how-it-works.md).
 
 ## Setup
 
@@ -60,7 +57,7 @@ More detail, including what the Kindle looks like inside: [docs/how-it-works.md]
 2. **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 3. **Actions → Update price image → Run workflow**.
 4. After a minute the site is at `https://<your-user>.github.io/kindle-spot-price/`
-   (current image: `kindle.png`, hourly images: `frames/`).
+   (latest image: `kindle.png`, hourly images: `frames/`).
 
 ### 2. Kindle
 

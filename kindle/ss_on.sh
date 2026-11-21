@@ -9,8 +9,8 @@
 #     with a bind mount of /var/local/sslive/live. Nothing on the system
 #     partition is modified; "Lockscreen OFF" or a reboot restores the original.
 #   - A background updater (only runs while the Kindle is awake):
-#       * downloads the day's hourly images (frames) when Wi-Fi is on and
-#         images are missing - normally once a day
+#       * downloads hourly images (frames) when Wi-Fi is on and images are
+#         missing: the current hour's image, or after 18:00 tomorrow's images
 #       * puts the image for the current hour in place at every full hour
 #         and right after the Kindle wakes up (no network needed)
 #
@@ -94,8 +94,9 @@ need_fetch() {
     cur="$FRAMES/$(date +%Y%m%d-%H).png"
     [ -f "$cur" ] || return 0                       # current hour missing
     last=$(tail -n 1 "$FRAMES/manifest.txt" 2>/dev/null)
-    # after 15:00, fetch again until tomorrow's images are there
-    if [ "$hour" -ge 15 ] && [ "${last%%-*}" = "$today" ]; then
+    # after 18:00, fetch again until tomorrow's images are there
+    # (the cloud renders them between 15:00 and 18:00)
+    if [ "$hour" -ge 18 ] && [ "${last%%-*}" = "$today" ]; then
         return 0
     fi
     return 1
@@ -149,7 +150,12 @@ apply_current() {
 
 tick() {
     mkdir "$LOCK" 2>/dev/null || return 0           # another tick is running
-    if need_fetch && wifi_up; then fetch; fi
+    if need_fetch; then
+        # right after a wake-up Wi-Fi needs a few seconds to reconnect
+        n=0
+        while ! wifi_up && [ $n -lt 10 ]; do sleep 3; n=$((n + 1)); done
+        wifi_up && fetch
+    fi
     apply_current
     rmdir "$LOCK"
 }

@@ -21,9 +21,10 @@
 
 电价提前一天就确定了，所以图片可以全部预先画好。
 
-1. **云端**：GitHub Actions 每小时运行一次，从 spot-hinta.fi 拉取电价，为今天和明天（约 14 点公布后）的**每个小时各画一张图**，发布到 GitHub Pages。不需要自己的服务器。
+1. **云端**：明天的电价约 14 点公布后，GitHub Actions 每天在 15、16、17 点（另加 20 点保险）运行，从 spot-hinta.fi 拉取电价，为今天和明天的**每个小时各画一张图**，发布到 GitHub Pages。不需要自己的服务器。（定时用的是 UTC 时间，夏令时期间会晚一小时。）
 2. **Kindle**：脚本把内部存储里的一个文件夹"挂载"到系统锁屏图文件夹上，系统分区不做任何修改，重启后自动恢复原样。后台脚本只在 Kindle 醒着时运行：
-   - Wi-Fi 开着、并且本地缺图时，下载一批图（一般一天一次，比如你晚上看书时）
+   - 18 点以后 Wi-Fi 开着时，下载明天的图，同时删除前一天的图（一般一天一次，比如你晚上看书时）
+   - 如果晚上没用 Kindle，第二天第一次联网唤醒时，发现当前小时没有图，会自动补下载
    - 每到整点，以及每次唤醒 Kindle 时，换上当前小时的图，这一步不需要联网
 
 详细技术说明见 [how-it-works.md](how-it-works.md)（英文）。
@@ -35,7 +36,7 @@
 1. 把这个仓库推送到 GitHub
 2. 仓库 **Settings → Pages**，**Source** 选 **GitHub Actions**
 3. **Actions → Update price image → Run workflow**，手动运行一次
-4. 约一分钟后，网址是 `https://<你的用户名>.github.io/kindle-spot-price/`（当前图片 `kindle.png`，每小时的图在 `frames/` 里）
+4. 约一分钟后，网址是 `https://<你的用户名>.github.io/kindle-spot-price/`（最近一次生成的图 `kindle.png`，每小时的图在 `frames/` 里）
 
 ### 第二步：Kindle
 
