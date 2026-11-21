@@ -44,7 +44,7 @@ The image is drawn in landscape (Kindle turned with its top edge to the left):
 
 ### Design notes
 
-The layout went through several rounds of iteration on the real device. The ideas that shaped it:
+The layout went through several rounds of iteration. The ideas that shaped it:
 
 - **One glance, two questions.** The left side answers *"should I use electricity now?"* (big number
   plus a CHEAP / EXPENSIVE label); the right side answers *"when today?"* (the chart).

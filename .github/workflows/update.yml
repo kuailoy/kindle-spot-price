@@ -33,7 +33,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq fonts-dejavu-core
+          sudo apt-get install -y -qq fonts-dejavu-core   # fallback only; Inter is in render/fonts
           pip install -r requirements.txt
 
       - name: Test
@@ -41,16 +41,6 @@ jobs:
 
       - name: Render
         run: python render/render.py --out-dir out
-
-      - name: Add index page
-        run: |
-          cat > out/index.html <<'EOF'
-          <!doctype html><meta charset="utf-8"><title>kindle-spot-price</title>
-          <body style="font-family:sans-serif;text-align:center">
-          <p><a href="kindle.png">kindle.png</a> · <a href="prices.json">prices.json</a></p>
-          <img src="kindle.png" style="max-width:90vw;max-height:85vh;border:1px solid #ccc">
-          </body>
-          EOF
 
       - uses: actions/upload-pages-artifact@v3
         with:

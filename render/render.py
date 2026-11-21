@@ -5,7 +5,9 @@ Data source: api.spot-hinta.fi (Nord Pool day-ahead prices for the FI area,
 15-minute resolution, prices including VAT).
 
 Output (in --out-dir):
-    kindle.png           image for the current hour
+    kindle.png           image for the current hour (as stored on the Kindle)
+    preview.png          the same image upright (landscape), for the web page
+    index.html           small web page for GitHub Pages
     prices.json          hourly prices + laundry window, for other displays
     frames/YYYYMMDD-HH.png  one image per hour for today and tomorrow
     frames/manifest.txt  list of the frame file names
@@ -81,6 +83,7 @@ FONT_CANDIDATES = {
 GRAY_INDEX = [12, 11, 10, 9, 8, 7, 6, 5, 4, 2, 0]   # lightest bar = light gray, no outlines needed
 GRAYS = [i * 17 for i in GRAY_INDEX]
 # other grays, also exact panel levels
+TEXT1 = 34        # secondary text in the landscape design (higher contrast)
 TEXT2 = 68        # secondary text
 TEXT3 = 102       # tertiary text
 RULE = 170        # divider lines
@@ -486,7 +489,7 @@ def _icon_washer(d: ImageDraw.ImageDraw, x: float, y: float, s: float, fill: int
 
 def _icon_arrow(d: ImageDraw.ImageDraw, x: float, y: float, s: float, up: bool, fill: int = 0) -> None:
     """Simple arrow in an s x s box."""
-    w = max(3, round(s / 9))
+    w = max(4, round(s / 8))
     cx = x + s / 2
     top, bot = y + s * 0.12, y + s * 0.88
     if up:
@@ -499,7 +502,7 @@ def _icon_arrow(d: ImageDraw.ImageDraw, x: float, y: float, s: float, up: bool, 
 
 def _icon_washer_simple(d: ImageDraw.ImageDraw, x: float, y: float, s: float, fill: int = 0) -> None:
     """Minimal washing machine: rounded square and a round door."""
-    w = max(3, round(s / 12))
+    w = max(4, round(s / 10))
     d.rounded_rectangle([x, y, x + s, y + s], radius=s * 0.2, outline=fill, width=w)
     cx, cy, r = x + s / 2, y + s * 0.56, s * 0.24
     d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=fill, width=w)
@@ -541,46 +544,67 @@ def _draw_landscape(img: Image.Image, hours: list[Hour], laundry: Window | None,
                     low: Window | None = None, high: Window | None = None) -> None:
     """Current price on the left, today's chart on the right.
 
-    Grid (1448 x 1072, 64 px margins): left column 64-374, chart 470-1384.
-    The left column's kicker and the chart's kicker share the top line (y=64);
-    the last stat ends on the chart's baseline.
+    Layout grid (1448 x 1072):
+      - top and bottom margins are equal (84 px): kickers start at y=84, the x-axis
+        labels end ~84 px above the bottom edge
+      - left column: the upper block (price) and the icons share the left edge x=64;
+        the lower block's text starts at x=124, its block is centered vertically
+        between the label pill and the bottom edge
+      - chart: x 530-1384
     """
     W, H = img.size
     d = ImageDraw.Draw(img)
+    # sizes tuned on the device: a Kindle is read from further away than a phone
     F = {
-        "hero": _inter("InterDisplay-Bold", 172),
-        "unit": _inter("Inter-Medium", 28),
-        "kicker": _inter("Inter-SemiBold", 24),
-        "pill": _inter("Inter-Bold", 22),
-        "stat": _inter("InterDisplay-SemiBold", 54),
-        "sub": _inter("Inter-Medium", 26),
-        "axis": _inter("Inter-Medium", 22),
-        "tag": _inter("Inter-Bold", 20),
-        "now": _inter("Inter-Bold", 22),
+        "hero": _inter("InterDisplay-Bold", 212),
+        "unit": _inter("Inter-Medium", 32),
+        "kicker": _inter("Inter-SemiBold", 28),
+        "pill": _inter("Inter-Bold", 26),
+        "stat": _inter("InterDisplay-SemiBold", 62),
+        "sub": _inter("Inter-Medium", 30),
+        "axis": _inter("Inter-Medium", 26),
+        "tag": _inter("Inter-Bold", 24),
+        "now": _inter("Inter-Bold", 26),
     }
     M = 64
-    TOP = 64                     # top line for kickers
+    TOP = 84                     # top line for kickers
+    LX_ICON = M                  # icons and the upper block share the left edge
+    LX = M + 60                  # text of the lower block
     if not hours:
         d.text((W / 2, H / 2), "No price data for today", font=F["stat"], fill=0, anchor="mm")
         return
+
+    CHART_LEFT = 530
+    PLOT_BOTTOM = 940            # chart baseline; x labels below end ~84 px above the edge
+    ROW_STEP = 166
+    # lower block: centered between the label pill and the bottom edge,
+    # so it has the same space above and below (and sits a little above the x axis)
+    block_h = 2 * ROW_STEP + 78 + 24                # first value top .. last detail bottom
+    pill_bottom = TOP + 352
+    ROW_Y0 = round(pill_bottom + (H - pill_bottom - block_h) / 2)
 
     def span(w: Window) -> str:
         return f"{_hh(w.start)} – {_hh(w.end)}"
 
     # ======================= left column =======================
-    lx = M
+    lx = M                       # upper block: kicker, price, unit, label
     cur = _current(hours, now_l)
     if cur is not None:
         d.text((lx, TOP), f"NOW  {_hh(cur.start)} – {_hh(cur.start + timedelta(hours=1))}",
-               font=F["kicker"], fill=TEXT2, anchor="lt")
-        d.text((lx - 4, 262), fmt_price(cur.price), font=F["hero"], fill=0, anchor="ls")
-        d.text((lx, 284), "c/kWh incl. VAT", font=F["unit"], fill=TEXT2, anchor="lt")
+               font=F["kicker"], fill=TEXT1, anchor="lt")
+        hero = F["hero"]
+        size = 212
+        while d.textlength(fmt_price(cur.price), font=hero) > CHART_LEFT - 90 - lx and size > 140:
+            size -= 4
+            hero = _inter("InterDisplay-Bold", size)
+        d.text((lx - 7, TOP + 228), fmt_price(cur.price), font=hero, fill=0, anchor="ls")
+        d.text((lx, TOP + 250), "c/kWh incl. VAT", font=F["unit"], fill=TEXT1, anchor="lt")
         label, style = level_for(cur.price)
         tw = d.textlength(label, font=F["pill"])
-        box = [lx, 342, lx + tw + 36, 382]
+        box = [lx, TOP + 306, lx + tw + 40, TOP + 352]
         mid = ((box[0] + box[2]) / 2, (box[1] + box[3]) / 2)
         if style == "dark":
-            d.rounded_rectangle(box, radius=20, fill=0)
+            d.rounded_rectangle(box, radius=23, fill=0)
             d.text(mid, label, font=F["pill"], fill=255, anchor="mm")
         elif style == "mid":
             d.rounded_rectangle(box, radius=20, fill=GRID)
@@ -591,17 +615,17 @@ def _draw_landscape(img: Image.Image, hours: list[Hour], laundry: Window | None,
 
     # stats: icon, big value, one line of detail; the last row ends on the chart baseline
     icon_s = 40
-    tx = lx + icon_s + 22
-    style = os.environ.get("KSP_ICONS", "swatch")
+    tx = LX
+    style = os.environ.get("KSP_ICONS", "arrow")
     if style == "peak":
-        hi_icon = lambda y: _icon_peak(d, lx, y, icon_s, up=True)
-        lo_icon = lambda y: _icon_peak(d, lx, y, icon_s, up=False)
+        hi_icon = lambda y: _icon_peak(d, LX_ICON, y, icon_s, up=True)
+        lo_icon = lambda y: _icon_peak(d, LX_ICON, y, icon_s, up=False)
     elif style == "arrow":
-        hi_icon = lambda y: _icon_arrow(d, lx, y, icon_s, up=True)
-        lo_icon = lambda y: _icon_arrow(d, lx, y, icon_s, up=False)
+        hi_icon = lambda y: _icon_arrow(d, LX_ICON, y, icon_s, up=True)
+        lo_icon = lambda y: _icon_arrow(d, LX_ICON, y, icon_s, up=False)
     else:
-        hi_icon = lambda y: _icon_swatch(d, lx, y, icon_s, up=True)
-        lo_icon = lambda y: _icon_swatch(d, lx, y, icon_s, up=False)
+        hi_icon = lambda y: _icon_swatch(d, LX_ICON, y, icon_s, up=True)
+        lo_icon = lambda y: _icon_swatch(d, LX_ICON, y, icon_s, up=False)
     rows = []
     if high is not None:
         rows.append((lambda y: hi_icon(y),
@@ -611,26 +635,28 @@ def _draw_landscape(img: Image.Image, hours: list[Hour], laundry: Window | None,
                      fmt_price(low.price), f"Lowest 2 h · {span(low)}", "stat"))
     if laundry is not None:
         label = "Tomorrow" if laundry.day != now_l.date() else "Laundry"
-        rows.append((lambda y: _icon_washer_simple(d, lx, y, icon_s),
+        rows.append((lambda y: _icon_washer_simple(d, LX_ICON, y, icon_s),
                      span(laundry), f"{label} · avg {fmt_price(laundry.price)} c", "stat"))
     else:
-        rows.append((lambda y: _icon_washer_simple(d, lx, y, icon_s, fill=TEXT3),
+        rows.append((lambda y: _icon_washer_simple(d, LX_ICON, y, icon_s, fill=TEXT3),
                      "—", "Laundry · no window left today", "stat"))
     for i, (icon, big, sub, font) in enumerate(rows):
-        y = 494 + i * 150
-        icon(y + 8)
-        d.text((tx, y), big, font=F[font], fill=0, anchor="lt")
+        y = ROW_Y0 + i * ROW_STEP
+        d.text((tx - 3, y), big, font=F[font], fill=0, anchor="lt")
+        # center the icon on the digits' visual middle (cap height), not the text box
+        _, gy0, _, gy1 = d.textbbox((tx, y), "0", font=F[font], anchor="lt")
+        icon((gy0 + gy1) / 2 - icon_s / 2)
         sub_font = F["sub"]
-        max_w = 470 - 40 - tx                 # stay clear of the chart's axis labels
-        size = 26
-        while d.textlength(sub, font=sub_font) > max_w and size > 18:
+        max_w = CHART_LEFT - 90 - tx          # stay clear of the chart's axis labels
+        size = 30
+        while d.textlength(sub, font=sub_font) > max_w and size > 20:
             size -= 1
             sub_font = _inter("Inter-Medium", size)
-        d.text((tx, y + 68), sub, font=sub_font, fill=TEXT2, anchor="lt")
+        d.text((tx, y + 78), sub, font=sub_font, fill=TEXT1, anchor="lt")
 
     # ======================= chart =======================
-    left, right = 470, W - M
-    top, bottom = 180, 930
+    left, right = CHART_LEFT, W - M
+    top, bottom = TOP + 120, PLOT_BOTTOM
     y_max = chart_top_for(hours)
     lo_v = min(h.price for h in hours)
     scale_top = y_max
@@ -651,7 +677,7 @@ def _draw_landscape(img: Image.Image, hours: list[Hour], laundry: Window | None,
                 return left + (i + (t - h.start) / timedelta(hours=1)) * slot
         return right if t >= hours[-1].start else left
 
-    d.text((left, TOP), "TODAY · c/kWh", font=F["kicker"], fill=TEXT2, anchor="lt")
+    d.text((left, TOP), "TODAY · c/kWh", font=F["kicker"], fill=TEXT1, anchor="lt")
 
     # grid
     gstep = 5 if y_max <= 25 else 10
@@ -661,7 +687,7 @@ def _draw_landscape(img: Image.Image, hours: list[Hour], laundry: Window | None,
     for v in ticks:
         yy = y_of(v)
         d.line([(left, yy), (right, yy)], fill=GRID if v else 0, width=1 if v else 2)
-        d.text((left - 16, yy), f"{v}", font=F["axis"], fill=TEXT3, anchor="rm")
+        d.text((left - 16, yy), f"{v}", font=F["axis"], fill=TEXT2, anchor="rm")
 
     # cheapest / most expensive 2 h: background bands behind the bars.
     # LOW is always the lightest gray (lighter than any bar). HIGH is a few levels
@@ -691,13 +717,13 @@ def _draw_landscape(img: Image.Image, hours: list[Hour], laundry: Window | None,
         lab = "NOW"
         tw = d.textlength(lab, font=F["now"])
         bx0 = min(max(nx - tw / 2 - 14, left - 20), right - tw - 28)
-        d.rounded_rectangle([bx0, top - 86, bx0 + tw + 28, top - 50], radius=18, fill=0)
-        d.text((bx0 + 14 + tw / 2, top - 68), lab, font=F["now"], fill=255, anchor="mm")
+        d.rounded_rectangle([bx0, top - 92, bx0 + tw + 30, top - 50], radius=21, fill=0)
+        d.text((bx0 + 15 + tw / 2, top - 71), lab, font=F["now"], fill=255, anchor="mm")
 
     for tx, tag in tags:
         tw = d.textlength(tag, font=F["tag"])
-        d.rectangle([tx - tw / 2 - 6, top - 32, tx + tw / 2 + 6, top - 4], fill=255)
-        d.text((tx, top - 8), tag, font=F["tag"], fill=TEXT2, anchor="mb")
+        d.rectangle([tx - tw / 2 - 6, top - 36, tx + tw / 2 + 6, top - 4], fill=255)
+        d.text((tx, top - 8), tag, font=F["tag"], fill=TEXT1, anchor="mb")
 
     # bars: no outlines, gray = absolute price level
     zero_y = y_of(0)
@@ -721,18 +747,22 @@ def _draw_landscape(img: Image.Image, hours: list[Hour], laundry: Window | None,
         t_hour = (hours[0].start + timedelta(hours=k)).hour if k < n else 24
         x = left + k * slot
         if t_hour % 3 == 0:
-            d.line([(x, zero_y + 2), (x, zero_y + 12)], fill=TEXT3, width=2)
-            d.text((x, bottom + 22), f"{t_hour:02d}", font=F["axis"], fill=TEXT3, anchor="mt")
+            d.line([(x, zero_y + 2), (x, zero_y + 12)], fill=TEXT2, width=2)
+            d.text((x, bottom + 22), f"{t_hour:02d}", font=F["axis"], fill=TEXT2, anchor="mt")
 
 
 def render(hours: list[Hour], laundry: Window | None, now: datetime, out_path: Path,
-           layout: str = LAYOUT, low: Window | None = None, high: Window | None = None) -> None:
+           layout: str = LAYOUT, low: Window | None = None, high: Window | None = None,
+           preview_path: Path | None = None) -> None:
     """Draw one lock-screen image. The saved PNG is always 1072x1448 (portrait),
     as the Kindle expects; the landscape layout is drawn sideways and rotated."""
     now_l = now.astimezone(TZ)
     if layout == "landscape":
         img = Image.new("L", (HEIGHT, WIDTH), 255)
         _draw_landscape(img, hours, laundry, now_l, low=low, high=high)
+        if preview_path is not None:          # upright copy for the web page
+            preview_path.parent.mkdir(parents=True, exist_ok=True)
+            img.save(preview_path, optimize=True)
         img = img.rotate(ROTATE, expand=True)
     else:
         img = Image.new("L", (WIDTH, HEIGHT), 255)
@@ -782,6 +812,26 @@ def render_frames(slots: list[Slot], frames_dir: Path, now: datetime) -> list[st
     return names
 
 
+def write_index(out: Path, now: datetime) -> None:
+    """Small web page for GitHub Pages: the upright preview and links to the files."""
+    img = "preview.png" if (out / "preview.png").exists() else "kindle.png"
+    (out / "index.html").write_text(f"""<!doctype html>
+<html lang="en"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kindle-spot-price</title>
+<body style="font-family:system-ui,sans-serif;max-width:960px;margin:2rem auto;padding:0 1rem;color:#222">
+<h1 style="font-size:1.3rem">Finnish spot price · Kindle lock screen</h1>
+<p>Generated {now.astimezone(TZ):%Y-%m-%d %H:%M} (Helsinki).
+The image below is the current hour's lock screen, shown upright.</p>
+<img src="{img}" alt="Today's lock screen" style="width:100%;border:1px solid #ddd">
+<p><a href="kindle.png">kindle.png</a> (rotated, as stored on the Kindle) ·
+<a href="frames/manifest.txt">hourly frames</a> ·
+<a href="prices.json">prices.json</a> ·
+<a href="https://github.com/kuailoy/kindle-spot-price">source</a></p>
+</body></html>
+""")
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--out-dir", default="out", help="where to write the output")
@@ -805,7 +855,9 @@ def main(argv: list[str] | None = None) -> int:
     out = Path(args.out_dir)
     render(hours, laundry, now, out / "kindle.png",
            low=extreme_window(slots, today, cheapest=True),
-           high=extreme_window(slots, today, cheapest=False))
+           high=extreme_window(slots, today, cheapest=False),
+           preview_path=out / "preview.png")
+    write_index(out, now)
     (out / "prices.json").write_text(json.dumps(summary(hours, laundry, now), ensure_ascii=False, indent=2))
     print(f"wrote {out / 'kindle.png'} ({len(hours)} hours)")
 
