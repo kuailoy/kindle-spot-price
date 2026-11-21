@@ -677,7 +677,11 @@ def _draw_landscape(img: Image.Image, hours: list[Hour], laundry: Window | None,
                 return left + (i + (t - h.start) / timedelta(hours=1)) * slot
         return right if t >= hours[-1].start else left
 
-    d.text((left, TOP), "TODAY · c/kWh", font=F["kicker"], fill=TEXT1, anchor="lt")
+    # date of the chart, so a stale lock screen is obvious (English names, locale-independent)
+    day = hours[0].start.astimezone(TZ)
+    wd = ("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN")[day.weekday()]
+    mon = ("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")[day.month - 1]
+    d.text((left, TOP), f"{wd} {day.day} {mon} · c/kWh", font=F["kicker"], fill=TEXT1, anchor="lt")
 
     # grid
     gstep = 5 if y_max <= 25 else 10
@@ -687,7 +691,7 @@ def _draw_landscape(img: Image.Image, hours: list[Hour], laundry: Window | None,
     for v in ticks:
         yy = y_of(v)
         d.line([(left, yy), (right, yy)], fill=GRID if v else 0, width=1 if v else 2)
-        d.text((left - 16, yy), f"{v}", font=F["axis"], fill=TEXT2, anchor="rm")
+        d.text((left - 16, yy), f"{v}", font=F["axis"], fill=TEXT1, anchor="rm")
 
     # cheapest / most expensive 2 h: background bands behind the bars.
     # LOW is always the lightest gray (lighter than any bar). HIGH is a few levels
@@ -747,8 +751,8 @@ def _draw_landscape(img: Image.Image, hours: list[Hour], laundry: Window | None,
         t_hour = (hours[0].start + timedelta(hours=k)).hour if k < n else 24
         x = left + k * slot
         if t_hour % 3 == 0:
-            d.line([(x, zero_y + 2), (x, zero_y + 12)], fill=TEXT2, width=2)
-            d.text((x, bottom + 22), f"{t_hour:02d}", font=F["axis"], fill=TEXT2, anchor="mt")
+            d.line([(x, zero_y + 2), (x, zero_y + 12)], fill=TEXT1, width=2)
+            d.text((x, bottom + 22), f"{t_hour:02d}", font=F["axis"], fill=TEXT1, anchor="mt")
 
 
 def render(hours: list[Hour], laundry: Window | None, now: datetime, out_path: Path,
