@@ -31,17 +31,18 @@
 
 价格是 Nord Pool 芬兰区现货价，含税，不含电力公司的加价和电网传输费。
 
-## 原理
+## 原理和刷新策略
 
-电价提前一天就确定了，所以图片可以全部预先画好。
+电价提前一天就确定了，所以尽量让 Kindle 不用联网：
 
-1. **云端**：明天的电价约 14 点公布后，GitHub Actions 每天在 15、16、17 点（另加 20 点保险）运行，从 spot-hinta.fi 拉取电价，为今天和明天的**每个小时各画一张图**，发布到 GitHub Pages。不需要自己的服务器。（定时用的是 UTC 时间，夏令时期间会晚一小时。）
-2. **Kindle**：脚本把内部存储里的一个文件夹"挂载"到系统锁屏图文件夹上，系统分区不做任何修改，重启后自动恢复原样。后台脚本只在 Kindle 醒着时运行：
-   - 18 点以后 Wi-Fi 开着时，下载明天的图，同时删除前一天的图（一般一天一次，比如你晚上看书时）
-   - 如果晚上没用 Kindle，第二天第一次联网唤醒时，发现当前小时没有图，会自动补下载
-   - 每到整点，以及每次唤醒 Kindle 时，换上当前小时的图，这一步不需要联网
+1. **云端提前生成**：每天下午 GitHub Actions 为今天和明天的每个小时各画一张图，发布到 GitHub Pages。不需要自己的服务器
+2. **Kindle 每天下载一次**：晚上 18 点后连着 Wi-Fi 时，下载明天的图，删掉前一天的
+3. **整点离线换图**：每到整点，把对应的图复制到锁屏，不需要联网
+4. **锁屏期间定时唤醒**：硬件闹钟每个整点把休眠中的 Kindle 叫醒（默认 7 点到 23 点，夜里不打扰），1 秒左右刷新锁屏，然后自己睡回去。不开 Wi-Fi，也不会进入主界面
 
-详细技术说明见 [how-it-works.md](how-it-works.md)（英文）。
+锁屏图的替换方式：把内部存储里的一个文件夹"挂载"到系统锁屏图文件夹上，系统分区不做任何修改，重启后自动恢复原样。
+
+已知限制：每次定时唤醒后，系统会先等大约 95 秒才真正进入深度休眠（和按电源键锁屏后的等待一样），一天大约多耗 1% 电量，目前可以接受。详细的测试过程和数据见 [update-strategy.md](update-strategy.md)（英文）。
 
 ## 安装
 
@@ -64,9 +65,12 @@ kindle/
 │   ├── ss_on.sh      Lockscreen ON（开启）  → 拷进 Kindle 的 documents 文件夹
 │   └── ss_off.sh     Lockscreen OFF（关闭） → 拷进 Kindle 的 documents 文件夹
 ├── sslive/
-│   └── url.txt       你的 GitHub Pages 网址 → 拷进 Kindle 的 sslive 文件夹
+│   ├── url.txt       你的 GitHub Pages 网址 → 拷进 Kindle 的 sslive 文件夹
+│   └── config.txt    整点唤醒和免打扰时段设置 → 拷进 Kindle 的 sslive 文件夹
 └── tools/
-    └── ss_diag.sh    可选的只读检查脚本，正常使用不需要
+    ├── ss_diag.sh    可选的只读检查脚本，正常使用不需要
+    ├── wake_diag.sh  可选：电源事件和硬件时钟检查（只读）
+    └── wake_test.sh  可选：一次性的定时唤醒测试
 ```
 
 > **只拷文件，不要拷文件夹。** 如果把一个叫 `documents` 的文件夹拖到 Kindle 上，Finder 会提示"替换"已有的 `documents` 文件夹，点了就会把你的书全部删掉。
@@ -76,14 +80,14 @@ kindle/
 1. **填写网址**：打开项目里的 `kindle/sslive/url.txt`，把 `YOUR-USER` 换成你的 GitHub 用户名。以 `#` 开头的行是说明，会被忽略。改完先在浏览器里打开"你的网址 + `frames/manifest.txt`"，能看到一列文件名就说明网址对了。
 2. **连接 Kindle**：USB 连上 Mac，Finder 里会出现 `Kindle`（路径是 `/Volumes/Kindle`）。
 3. **拷贝两个脚本**：在 Finder 里同时选中 `ss_on.sh` 和 `ss_off.sh`，拖**进** Kindle 的 `documents` 文件夹里面。如果提示有同名文件，选"替换"，这只会替换这两个文件。
-4. **拷贝 `url.txt`**：拖进 Kindle 根目录的 `sslive` 文件夹。如果还没有 `sslive`，先在 Kindle 根目录新建一个。
+4. **拷贝 `url.txt` 和 `config.txt`**：拖进 Kindle 根目录的 `sslive` 文件夹。如果还没有 `sslive`，先在 Kindle 根目录新建一个。`config.txt` 用来设置整点唤醒和免打扰时段，不放的话就用默认值（开启，23 点到 7 点免打扰）。
 
    第 3、4 步也可以在终端里完成（先 `cd` 到项目文件夹）。`-X` 表示不拷贝 macOS 的附加信息，否则 Kindle 上会多出 `._ss_on.sh` 这样的隐藏文件，可能在书库里显示成打不开的"书"：
 
    ```bash
    cp -X kindle/scriptlets/ss_on.sh kindle/scriptlets/ss_off.sh /Volumes/Kindle/documents/
    mkdir -p /Volumes/Kindle/sslive
-   cp -X kindle/sslive/url.txt /Volumes/Kindle/sslive/
+   cp -X kindle/sslive/url.txt kindle/sslive/config.txt /Volumes/Kindle/sslive/
    dot_clean -m /Volumes/Kindle      # 清理之前用 Finder 拷贝时留下的 ._ 文件
    ```
 5. **弹出 Kindle**：在 Finder 里点"推出"，再拔线。
@@ -106,7 +110,7 @@ kindle/
 
 - 不需要任何操作：Kindle 醒着时会自动下载和换图
 - **重启后**会恢复成原来的锁屏，点一次 **Lockscreen ON** 即可
-- **Lockscreen OFF**：恢复原来的锁屏，停止后台脚本
+- **Lockscreen OFF**：恢复原来的锁屏，停止后台脚本，并取消整点唤醒闹钟
 - **更新脚本到新版本**：重复安装步骤 3、5、7
 - 再点一次 **Lockscreen ON** 会重新下载所有图片（比如图片设计改了之后）
 - **卸载**：点 **Lockscreen OFF**，删掉 `ss_on.sh`、`ss_off.sh` 和 `sslive` 文件夹。内部存储的 `/var/local/sslive` 里会留下约 1.5 MB 已下载的图，不影响使用，想删可以通过 SSH 或 kTerm

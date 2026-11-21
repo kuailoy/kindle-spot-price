@@ -13,10 +13,15 @@
 #         missing: the current hour's image, or after 18:00 tomorrow's images
 #       * tapping "Lockscreen ON" again re-downloads everything (e.g. after
 #         the image design changed)
+#   - While the Kindle is locked and asleep, a hardware alarm (rtc1) wakes it at
+#     every full hour (except during the quiet hours) to show the new hour's
+#     image; it falls asleep again by itself.
 #       * puts the image for the current hour in place at every full hour
 #         and right after the Kindle wakes up (no network needed)
 #
-# Setup: /mnt/us/sslive/url.txt  = base URL of the published images, e.g.
+# Setup: /mnt/us/sslive/config.txt (optional) = WAKE, QUIET_START, QUIET_END
+#        (template in the repo: kindle/sslive/config.txt)
+#        /mnt/us/sslive/url.txt  = base URL of the published images, e.g.
 #        https://<user>.github.io/kindle-spot-price/  (template in the repo:
 #        kindle/sslive/url.txt)
 #        /mnt/us/sslive/current.png (optional) = image used until frames exist
@@ -182,6 +187,73 @@ tick() {
     rmdir "$LOCK"
 }
 
+# ---------------------------------------------------------------------------
+# Timed wake-up while locked (verified on PW3 5.16.2.1.1, see docs/update-strategy.md)
+# ---------------------------------------------------------------------------
+RTC=/sys/class/rtc/rtc1
+
+conf() {   # conf KEY DEFAULT -> value from /mnt/us/sslive/config.txt
+    v=$(grep -E "^[[:space:]]*$1[[:space:]]*=" "$USER_DIR/config.txt" 2>/dev/null \
+        | tail -n 1 | cut -d= -f2 | tr -d ' \r')
+    echo "${v:-$2}"
+}
+
+is_quiet() {   # is_quiet HOUR -> true inside the quiet hours
+    qs=$(conf QUIET_START 23); qe=$(conf QUIET_END 7)
+    if [ "$qs" -gt "$qe" ]; then           # e.g. 23 -> 7, wraps midnight
+        [ "$1" -ge "$qs" ] || [ "$1" -lt "$qe" ]
+    else
+        [ "$1" -ge "$qs" ] && [ "$1" -lt "$qe" ]
+    fi
+}
+
+# Write the hardware alarm for the next full hour (+30 s), or for the end of the
+# quiet hours. Called on every readyToSuspend; the alarm is cleared by a suspend.
+arm_alarm() {
+    if [ "$(conf WAKE 1)" != "1" ]; then
+        echo 0 > $RTC/wakealarm 2>/dev/null
+        rm -f "$BASE/wake_target"
+        return 0
+    fi
+    now=$(date +%s)
+    h=$(date +%H); h=${h#0}
+    next=$(( (h + 1) % 24 ))
+    if is_quiet "$next"; then
+        qe=$(conf QUIET_END 7)
+        ahead=$(( (qe - h + 24) % 24 )); [ "$ahead" -eq 0 ] && ahead=24
+    else
+        ahead=1
+    fi
+    # local offsets are whole hours, so UTC hour boundaries are local ones too
+    target=$(( now - now % 3600 + ahead * 3600 + 30 ))
+    echo 0 > $RTC/wakealarm 2>/dev/null
+    if echo "$target" > $RTC/wakealarm 2>/dev/null; then
+        if [ "$(cat "$BASE/wake_target" 2>/dev/null)" != "$target" ]; then
+            log "wake-up alarm set for $(( (target - now) / 60 )) min from now"
+        fi
+        echo "$target" > "$BASE/wake_target"
+    else
+        log "could not write $RTC/wakealarm"
+    fi
+}
+
+# On a timed wake-up: show the current hour's image right away (no network).
+timed_wake() {
+    name="$(date +%Y%m%d-%H).png"
+    f="$FRAMES/$name"
+    bat=$(lipc-get-prop com.lab126.powerd battLevel 2>/dev/null)
+    if [ -f "$f" ]; then
+        mkdir "$LOCK" 2>/dev/null || return 0
+        install_image "$f"
+        echo "$name" > "$BASE/applied"
+        eips -f -g "$f" >/dev/null 2>&1
+        rmdir "$LOCK"
+        log "timed wake: showing $name, battery ${bat}%"
+    else
+        log "timed wake: $name not downloaded yet, battery ${bat}%"
+    fi
+}
+
 case "$1" in
     tick)
         tick
@@ -204,15 +276,33 @@ case "$1" in
         done
         ;;
     events)
-        # react right after the Kindle wakes up from the lock screen
+        # readyToSuspend   -> arm the hardware alarm for the next hour
+        # wakeupFromSuspend -> our alarm: redraw; otherwise the user woke it up
+        # outOfScreenSaver -> unlocked: update images if needed
         fifo=$BASE/events.fifo
         rm -f "$fifo"
         mkfifo "$fifo" 2>/dev/null || { log "mkfifo missing, wake events disabled"; exit 0; }
-        lipc-wait-event -m com.lab126.powerd outOfScreenSaver,wakeupFromSuspend > "$fifo" 2>/dev/null &
+        lipc-wait-event -m com.lab126.powerd readyToSuspend,wakeupFromSuspend,outOfScreenSaver \
+            > "$fifo" 2>/dev/null &
         echo $! >> "$BASE/pids"
-        while read -r line; do
-            sleep 2
-            tick
+        while read -r ev rest; do
+            case "$ev" in
+                readyToSuspend)
+                    arm_alarm
+                    ;;
+                wakeupFromSuspend)
+                    target=$(cat "$BASE/wake_target" 2>/dev/null || echo 0)
+                    diff=$(( $(date +%s) - target ))
+                    if [ "$target" -gt 0 ] && [ $diff -ge -120 ] && [ $diff -le 120 ]; then
+                        rm -f "$BASE/wake_target"
+                        timed_wake
+                    fi
+                    ;;
+                outOfScreenSaver)
+                    sleep 2
+                    tick
+                    ;;
+            esac
         done < "$fifo"
         ;;
 esac

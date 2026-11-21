@@ -1,0 +1,10 @@
+# Lock-screen settings. Changes apply at the next lock; no restart needed.
+# Lines starting with # are ignored.
+
+# Wake up every full hour while locked and show the new hour's image (1 = on, 0 = off)
+WAKE=1
+
+# No timed wake-ups from QUIET_START:00 to QUIET_END:00 (24 h clock).
+# The first wake-up after the quiet hours is at QUIET_END:00.
+QUIET_START=23
+QUIET_END=7

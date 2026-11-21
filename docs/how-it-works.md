@@ -90,7 +90,7 @@ suspended and cost nothing then.
 | Loop | Trigger | Does |
 |---|---|---|
 | `timer` | sleeps until the next full hour (at most 15 min at a time) | `tick` |
-| `events` | `lipc-wait-event -m com.lab126.powerd outOfScreenSaver,wakeupFromSuspend` | `tick` 2 s after wake-up |
+| `events` | `lipc-wait-event -m com.lab126.powerd readyToSuspend,wakeupFromSuspend,outOfScreenSaver` | arm the hourly alarm; redraw on a timed wake-up; `tick` after unlocking (see [update-strategy.md](update-strategy.md)) |
 
 `tick`:
 
@@ -118,14 +118,6 @@ replaces a working image.
 
 ### Limits of the current version
 
-- While suspended nothing runs, so the lock screen shows the hour in which the Kindle was
-  locked. The hour printed in the top-right corner shows which one.
 - The bind mount and the updater do not survive a reboot; run **Lockscreen ON** again.
-
-### Next: timed wake-up
-
-Because the frames are already on the device, a wake-up does not need Wi-Fi: set an RTC
-wake-up before suspend, on wake copy the current frame and draw it with `eips -g`, then
-suspend again. Rough estimate: a few seconds at ~100–200 mA per wake-up, i.e. about
-0.5 % of the battery per day for hourly wake-ups (to be measured by logging the battery
-level). A watchdog must make sure the device always goes back to sleep.
+- Timed wake-ups while locked: see [update-strategy.md](update-strategy.md), including the
+  ~95 s awake time per wake-up.

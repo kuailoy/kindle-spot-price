@@ -13,7 +13,8 @@ if [ -f "$BASE/pids" ]; then
     rm -f "$BASE/pids"
 fi
 rmdir "$BASE/lock" 2>/dev/null
-rm -f "$BASE/events.fifo"
+rm -f "$BASE/events.fifo" "$BASE/wake_target"
+echo 0 > /sys/class/rtc/rtc1/wakealarm 2>/dev/null     # no more timed wake-ups
 
 if grep -q " $SYS " /proc/mounts; then
     umount "$SYS" && echo "Stock lock screen restored." || echo "ERROR: unmount failed, reboot to restore."
