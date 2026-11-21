@@ -239,20 +239,27 @@ def render(hours: list[Hour], laundry: Window | None, now: datetime, out_path: P
     f_label = load_font("regular", 34)
     f_big = load_font("bold", 76)
     f_mid = load_font("bold", 42)
+    f_now = load_font("bold", 92)
 
     now_l = now.astimezone(TZ)
 
     # ---- header ----
     title = "Spot price today"
-    d.text((60, 58), title, font=f_title, fill=0)
-    d.text((60 + d.textlength(title, font=f_title) + 18, 72),
-           "c/kWh incl. VAT", font=f_small, fill=85)
-    # which hour this image is for (shows how old the lock screen is)
-    d.text((WIDTH - 60, 70), f"{now_l:%H}:00", font=f_small, fill=85, anchor="ra")
+    d.text((60, 60), title, font=f_title, fill=0)
+    d.text((60, 122), "c/kWh incl. VAT", font=f_small, fill=85)
+
+    # current hour's price, big, top right (also shows which hour this image is for)
+    current = next((h for h in hours if h.start <= now_l < h.start + timedelta(hours=1)), None)
+    if current is not None:
+        d.text((WIDTH - 60, 40), fmt_price(current.price), font=f_now, fill=0, anchor="ra")
+        span = f"now · {fmt_hm(current.start)}–{fmt_hm(current.start + timedelta(hours=1))}"
+        d.text((WIDTH - 60, 140), span, font=f_small, fill=60, anchor="ra")
+    else:
+        d.text((WIDTH - 60, 72), f"{now_l:%H}:00", font=f_small, fill=85, anchor="ra")
 
     # ---- chart geometry ----
     left, right = 120, WIDTH - 50
-    top, bottom = 170, 960
+    top, bottom = 250, 960
     plot_h = bottom - top
     scale_top = Y_MAX + Y_HEADROOM
     has_negative = any(h.price < 0 for h in hours)

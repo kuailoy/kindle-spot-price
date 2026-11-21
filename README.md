@@ -32,7 +32,7 @@ Details: [docs/how-it-works.md](docs/how-it-works.md)
 
 - **Today's 24 hourly prices** (average of the four 15-minute prices), in c/kWh including VAT
 - **Gray level per 4 c/kWh**, from white (< 4) to black (≥ 40); dashed lines at 8 c ("cheap") and 20 c ("expensive")
-- **Current hour** marked with a triangle; the hour is also printed in the corner, so a stale lock screen is easy to spot
+- **Current price** in large type at the top right, with its hour (e.g. `now · 13:00–14:00`), so a stale lock screen is easy to spot; the current hour's bar is outlined and marked with a triangle
 - **Highest / lowest hour** of the day
 - **Best 2-hour laundry window**: the cheapest continuous 2 hours between 07:00 and 22:00 in the rest of the day; late in the evening it switches to tomorrow
 
@@ -126,6 +126,7 @@ downloaded: check Wi-Fi and `url.txt`, and look at `sslive/log.txt`.
 - **After a reboot** the stock lock screen is back; tap **Lockscreen ON** once.
 - **Lockscreen OFF** restores the stock lock screen and stops the updater.
 - **Updating** to a new version of the scripts: repeat steps 3, 5 and 7.
+- Tapping **Lockscreen ON** again re-downloads all images (useful after the image design changed).
 - **Uninstall:** tap **Lockscreen OFF**, delete `ss_on.sh`, `ss_off.sh` and the `sslive` folder.
   About 1.5 MB of downloaded images stays in `/var/local/sslive` on internal storage
   (harmless; it can be removed over SSH or kTerm).

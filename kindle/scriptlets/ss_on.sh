@@ -11,6 +11,8 @@
 #   - A background updater (only runs while the Kindle is awake):
 #       * downloads hourly images (frames) when Wi-Fi is on and images are
 #         missing: the current hour's image, or after 18:00 tomorrow's images
+#       * tapping "Lockscreen ON" again re-downloads everything (e.g. after
+#         the image design changed)
 #       * puts the image for the current hour in place at every full hour
 #         and right after the Kindle wakes up (no network needed)
 #
@@ -73,13 +75,23 @@ install_image() {
 }
 
 wifi_up() {
-    lipc-get-prop com.lab126.wifid cmState 2>/dev/null | grep -q CONNECTED
+    state=$(lipc-get-prop com.lab126.wifid cmState 2>/dev/null)
+    # if the state can't be read, just try - curl fails quickly without network
+    [ -z "$state" ] && return 0
+    echo "$state" | grep -q CONNECTED
 }
 
 base_url() {
+    if [ ! -f "$USER_DIR/url.txt" ]; then
+        log "url.txt not found at $USER_DIR/url.txt (files there: $(ls "$USER_DIR" 2>/dev/null | tr '\n' ' '))"
+        return 1
+    fi
     # first line that is not empty and not a # comment
     u=$(grep -v '^[[:space:]]*#' "$USER_DIR/url.txt" 2>/dev/null | tr -d '\r ' | grep -v '^$' | head -n 1)
-    [ -n "$u" ] || return 1
+    if [ -z "$u" ]; then
+        log "url.txt has no address line"
+        return 1
+    fi
     case "$u" in
         *YOUR-USER*) log "url.txt still has the placeholder YOUR-USER, edit it"; return 1 ;;
     esac
@@ -112,17 +124,18 @@ fetch() {
     t=$(now_s); prev=$(cat "$BASE/last_fetch" 2>/dev/null || echo 0)
     [ $((t - prev)) -ge 1800 ] || return 1
     echo "$t" > "$BASE/last_fetch"
-    url=$(base_url) || { log "no url.txt, skipping download"; return 1; }
+    url=$(base_url) || return 1
 
     tmp=$BASE/manifest.tmp
-    if ! curl -fsSL --max-time 30 -o "$tmp" "${url}frames/manifest.txt"; then
-        log "manifest download failed"
+    err=$(curl -fsSL --max-time 30 -o "$tmp" "${url}frames/manifest.txt" 2>&1)
+    if [ $? -ne 0 ]; then
+        log "manifest download failed from ${url}frames/manifest.txt: $err"
         return 1
     fi
     got=0; bad=0
     while read -r name; do
         case "$name" in [0-9]*-[0-9][0-9].png) ;; *) continue ;; esac
-        [ -f "$FRAMES/$name" ] && continue
+        [ -z "$FORCE" ] && [ -f "$FRAMES/$name" ] && continue
         if curl -fsSL --max-time 60 -o "$FRAMES/$name.tmp" "${url}frames/$name" \
            && valid_png "$FRAMES/$name.tmp"; then
             mv "$FRAMES/$name.tmp" "$FRAMES/$name"; got=$((got + 1))
@@ -155,11 +168,15 @@ apply_current() {
 
 tick() {
     mkdir "$LOCK" 2>/dev/null || return 0           # another tick is running
-    if need_fetch; then
+    if [ -n "$FORCE" ] || need_fetch; then
         # right after a wake-up Wi-Fi needs a few seconds to reconnect
         n=0
         while ! wifi_up && [ $n -lt 10 ]; do sleep 3; n=$((n + 1)); done
-        wifi_up && fetch
+        if wifi_up; then
+            fetch
+        else
+            log "images missing but Wi-Fi is not connected (state: ${state:-unknown}), will retry"
+        fi
     fi
     apply_current
     rmdir "$LOCK"
@@ -167,6 +184,12 @@ tick() {
 
 case "$1" in
     tick)
+        tick
+        ;;
+    refresh)
+        # used by "Lockscreen ON": download all images again, even if they
+        # exist, so a new image design shows up right away
+        FORCE=1
         tick
         ;;
     timer)
@@ -225,8 +248,8 @@ done
 # load the helper functions (valid_png, install_image) from the updater
 . "$DAEMON"
 
-# first image: download now if possible, else current.png
-"$DAEMON" tick
+# first image: download (again) now if possible, else current.png
+"$DAEMON" refresh
 if [ ! -f "$LIVE/bg_ss00.png" ] || ! [ -s "$BASE/applied" ]; then
     if valid_png "$USER_DIR/current.png" 2>/dev/null; then
         install_image "$USER_DIR/current.png"

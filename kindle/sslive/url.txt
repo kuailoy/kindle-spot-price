@@ -1,3 +1,3 @@
 # Address of your GitHub Pages site (the folder that contains frames/).
 # Replace YOUR-USER with your GitHub user name. Lines starting with # are ignored.
-https://kuailoy.github.io/kindle-spot-price/
+https://YOUR-USER.github.io/kindle-spot-price/
