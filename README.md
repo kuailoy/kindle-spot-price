@@ -61,21 +61,81 @@ Waking up briefly every hour to redraw (no Wi-Fi needed) is on the roadmap.
 
 ### 2. Kindle
 
-Requirements: a jailbroken Kindle Paperwhite 3 (tested on firmware 5.16.2.1.1, WinterBreak2),
-lock screen set to the fixed image (not "Display cover").
+Requirements: a jailbroken Kindle Paperwhite 3 (tested on firmware 5.16.2.1.1 with WinterBreak2).
 
-1. Connect the Kindle by USB.
-2. Copy `kindle/ss_on.sh` and `kindle/ss_off.sh` into the `documents` folder.
-3. Create a folder `sslive` in the Kindle root and put in it:
-   - `url.txt` – one line with your site URL, e.g. `https://<your-user>.github.io/kindle-spot-price/`
-   - `current.png` (optional) – any 1072×1448 grayscale PNG, used only if nothing has been downloaded yet
-4. Eject, turn on Wi-Fi, open **Lockscreen ON** from the library.
+Files in this repository:
 
-**Lockscreen OFF** (or a reboot) restores the stock lock screen and stops the updater.
-After a reboot, open **Lockscreen ON** again. Logs are written to `sslive/log.txt`.
+```
+kindle/
+├── scriptlets/
+│   ├── ss_on.sh      "Lockscreen ON"  - copy into the Kindle's documents/ folder
+│   └── ss_off.sh     "Lockscreen OFF" - copy into the Kindle's documents/ folder
+├── sslive/
+│   └── url.txt       your GitHub Pages address - copy into the Kindle's sslive/ folder
+└── tools/
+    └── ss_diag.sh    optional read-only diagnostic, not needed for normal use
+```
 
-`kindle/ss_diag.sh` is a read-only diagnostic that lists the screensaver files, tools and
-screen info; useful when porting to another Kindle model.
+> **Copy the files, not the folders.** Dragging a folder named `documents` onto the Kindle
+> makes Finder offer to *replace* the existing `documents` folder, which would delete your books.
+
+#### Install
+
+1. **Set your URL.** Open `kindle/sslive/url.txt` and replace `YOUR-USER` with your GitHub
+   user name. Check the address in a browser first: `<your URL>frames/manifest.txt` should show
+   a list of file names.
+2. **Connect the Kindle** by USB. On a Mac it appears as `/Volumes/Kindle`.
+3. **Copy the two scriptlets** into the Kindle's `documents` folder. In Finder, select
+   `ss_on.sh` and `ss_off.sh` and drag them *into* `Kindle/documents`. If asked, replace the
+   older versions (this replaces only these two files).
+4. **Copy `url.txt`** into the Kindle's `sslive` folder (create `sslive` in the Kindle root if
+   it does not exist).
+
+   Steps 3–4 in Terminal, from the repository folder (`-X` skips macOS metadata, which
+   would otherwise create extra `._ss_on.sh` files on the Kindle):
+
+   ```bash
+   cp -X kindle/scriptlets/ss_on.sh kindle/scriptlets/ss_off.sh /Volumes/Kindle/documents/
+   mkdir -p /Volumes/Kindle/sslive
+   cp -X kindle/sslive/url.txt /Volumes/Kindle/sslive/
+   dot_clean -m /Volumes/Kindle      # removes ._ files left by earlier Finder copies
+   ```
+5. **Eject** the Kindle in Finder before unplugging.
+6. **Lock screen setting:** on the Kindle, turn **Display Cover** off, so the lock screen uses
+   the built-in images.
+7. **Start:** make sure Wi-Fi is connected, open the library and tap **Lockscreen ON**.
+   If an older version was running, tap **Lockscreen OFF** first.
+   The screen shows e.g. `Lockscreen ON. Showing: 20261121-13.png`.
+
+#### Check that it works
+
+| Check | Expected |
+|---|---|
+| Press the power button | the price chart, current hour in the top-right corner |
+| `sslive/log.txt` (over USB) | `download: 24 new, 0 failed` and `showing YYYYMMDD-HH.png` |
+| Stay awake past a full hour, then lock | the corner shows the new hour |
+| Lock before a full hour, unlock after it, lock again | the corner shows the new hour |
+| Use the Kindle on Wi-Fi after 18:00 | log: another `download: 24 new` (tomorrow's images) |
+
+If the screen says `Using current.png ...` or `ERROR: no image yet`, nothing could be
+downloaded: check Wi-Fi and `url.txt`, and look at `sslive/log.txt`.
+
+#### Everyday use
+
+- Nothing to do: images are downloaded and switched automatically while the Kindle is awake.
+- **After a reboot** the stock lock screen is back; tap **Lockscreen ON** once.
+- **Lockscreen OFF** restores the stock lock screen and stops the updater.
+- **Updating** to a new version of the scripts: repeat steps 3, 5 and 7.
+- **Uninstall:** tap **Lockscreen OFF**, delete `ss_on.sh`, `ss_off.sh` and the `sslive` folder.
+  About 1.5 MB of downloaded images stays in `/var/local/sslive` on internal storage
+  (harmless; it can be removed over SSH or kTerm).
+
+#### Optional: diagnostic
+
+`kindle/tools/ss_diag.sh` (shows up as **Screensaver Check**) only reads information: stock
+screensaver files, available tools, screen size. Copy it into `documents`, run it, and read
+`ss_diag/info.txt` over USB. Useful when something does not work or when trying another Kindle
+model; not needed otherwise.
 
 ## Development
 

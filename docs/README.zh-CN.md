@@ -40,20 +40,65 @@
 
 ### 第二步：Kindle
 
-前提：Kindle 已越狱；锁屏设置为固定图片，不要选"显示封面"。
+前提：Kindle Paperwhite 3 已越狱（在固件 5.16.2.1.1、WinterBreak2 越狱上测试过）。
 
-1. USB 连接 Kindle
-2. 把 `kindle/ss_on.sh` 和 `kindle/ss_off.sh` 拷进 `documents` 文件夹
-3. 在 Kindle 根目录建 `sslive` 文件夹，放入：
-   - `url.txt`：只写一行网址，比如 `https://<你的用户名>.github.io/kindle-spot-price/`
-   - `current.png`（可选）：任意一张 1072×1448 的灰度 PNG，只在还没下载到任何图时使用
-4. 弹出 Kindle，打开 Wi-Fi，在书库里点 **Lockscreen ON**
+项目里的相关文件：
 
-- 点 **Lockscreen OFF** 或重启，恢复原来的锁屏，后台脚本也会停止
-- 重启后需要再点一次 **Lockscreen ON**
-- 运行日志在 `sslive/log.txt`
+```
+kindle/
+├── scriptlets/
+│   ├── ss_on.sh      Lockscreen ON（开启）  → 拷进 Kindle 的 documents 文件夹
+│   └── ss_off.sh     Lockscreen OFF（关闭） → 拷进 Kindle 的 documents 文件夹
+├── sslive/
+│   └── url.txt       你的 GitHub Pages 网址 → 拷进 Kindle 的 sslive 文件夹
+└── tools/
+    └── ss_diag.sh    可选的只读检查脚本，正常使用不需要
+```
 
-`kindle/ss_diag.sh` 是只读的检查脚本，会列出锁屏图片、可用工具和屏幕参数，换其他型号的 Kindle 时可以先跑一下。
+> **只拷文件，不要拷文件夹。** 如果把一个叫 `documents` 的文件夹拖到 Kindle 上，Finder 会提示"替换"已有的 `documents` 文件夹，点了就会把你的书全部删掉。
+
+#### 安装步骤
+
+1. **填写网址**：打开项目里的 `kindle/sslive/url.txt`，把 `YOUR-USER` 换成你的 GitHub 用户名。以 `#` 开头的行是说明，会被忽略。改完先在浏览器里打开"你的网址 + `frames/manifest.txt`"，能看到一列文件名就说明网址对了。
+2. **连接 Kindle**：USB 连上 Mac，Finder 里会出现 `Kindle`（路径是 `/Volumes/Kindle`）。
+3. **拷贝两个脚本**：在 Finder 里同时选中 `ss_on.sh` 和 `ss_off.sh`，拖**进** Kindle 的 `documents` 文件夹里面。如果提示有同名文件，选"替换"，这只会替换这两个文件。
+4. **拷贝 `url.txt`**：拖进 Kindle 根目录的 `sslive` 文件夹。如果还没有 `sslive`，先在 Kindle 根目录新建一个。
+
+   第 3、4 步也可以在终端里完成（先 `cd` 到项目文件夹）。`-X` 表示不拷贝 macOS 的附加信息，否则 Kindle 上会多出 `._ss_on.sh` 这样的隐藏文件，可能在书库里显示成打不开的"书"：
+
+   ```bash
+   cp -X kindle/scriptlets/ss_on.sh kindle/scriptlets/ss_off.sh /Volumes/Kindle/documents/
+   mkdir -p /Volumes/Kindle/sslive
+   cp -X kindle/sslive/url.txt /Volumes/Kindle/sslive/
+   dot_clean -m /Volumes/Kindle      # 清理之前用 Finder 拷贝时留下的 ._ 文件
+   ```
+5. **弹出 Kindle**：在 Finder 里点"推出"，再拔线。
+6. **锁屏设置**：在 Kindle 设置里关闭 **显示封面**（Display Cover），让锁屏使用系统自带的图片。
+7. **启动**：确认 Wi-Fi 已连接，在书库里点 **Lockscreen ON**。如果之前运行过旧版本，先点一次 **Lockscreen OFF**。屏幕上会显示类似 `Lockscreen ON. Showing: 20261121-13.png` 的信息。
+
+#### 检查是否生效
+
+| 检查方法 | 正常的结果 |
+|---|---|
+| 按电源键锁屏 | 显示电价图，右上角是当前小时 |
+| 连 USB 打开 `sslive/log.txt` | 有 `download: 24 new, 0 failed` 和 `showing 年月日-小时.png` |
+| 醒着跨过一个整点后锁屏 | 右上角变成新的小时 |
+| 整点前锁屏，过了整点解锁，再锁屏 | 右上角变成新的小时 |
+| 18 点后连着 Wi-Fi 用一下 Kindle | 日志里又多一行 `download: 24 new`（明天的图） |
+
+如果屏幕上显示 `Using current.png ...` 或 `ERROR: no image yet`，说明没下载到图：检查 Wi-Fi 和 `url.txt`，再看 `sslive/log.txt` 里的错误信息。
+
+#### 日常使用
+
+- 不需要任何操作：Kindle 醒着时会自动下载和换图
+- **重启后**会恢复成原来的锁屏，点一次 **Lockscreen ON** 即可
+- **Lockscreen OFF**：恢复原来的锁屏，停止后台脚本
+- **更新脚本到新版本**：重复安装步骤 3、5、7
+- **卸载**：点 **Lockscreen OFF**，删掉 `ss_on.sh`、`ss_off.sh` 和 `sslive` 文件夹。内部存储的 `/var/local/sslive` 里会留下约 1.5 MB 已下载的图，不影响使用，想删可以通过 SSH 或 kTerm
+
+#### 可选：检查脚本
+
+`kindle/tools/ss_diag.sh`（在书库里显示为 **Screensaver Check**）只读取信息，不改任何东西：系统锁屏图片、可用的工具、屏幕分辨率等。拷进 `documents` 运行后，连 USB 查看 `ss_diag/info.txt`。出问题需要排查，或者想在其他型号的 Kindle 上用时才需要，平时不用装。
 
 ## 目前的限制
 

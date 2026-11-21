@@ -15,7 +15,8 @@
 #         and right after the Kindle wakes up (no network needed)
 #
 # Setup: /mnt/us/sslive/url.txt  = base URL of the published images, e.g.
-#        https://<user>.github.io/kindle-spot-price/
+#        https://<user>.github.io/kindle-spot-price/  (template in the repo:
+#        kindle/sslive/url.txt)
 #        /mnt/us/sslive/current.png (optional) = image used until frames exist
 
 SYS=/usr/share/blanket/screensaver
@@ -76,8 +77,12 @@ wifi_up() {
 }
 
 base_url() {
-    u=$(head -n 1 "$USER_DIR/url.txt" 2>/dev/null | tr -d '\r\n ')
+    # first line that is not empty and not a # comment
+    u=$(grep -v '^[[:space:]]*#' "$USER_DIR/url.txt" 2>/dev/null | tr -d '\r ' | grep -v '^$' | head -n 1)
     [ -n "$u" ] || return 1
+    case "$u" in
+        *YOUR-USER*) log "url.txt still has the placeholder YOUR-USER, edit it"; return 1 ;;
+    esac
     case "$u" in
         *.png) u="${u%/*}/" ;;
         */)    ;;

@@ -53,7 +53,7 @@ level   15   14    12    11     9     8     6     5     3     2    0   (×17)
 
 ## The Kindle lock screen
 
-Findings from `kindle/ss_diag.sh` on a Paperwhite 3, firmware 5.16.2.1.1:
+Findings from `kindle/tools/ss_diag.sh` on a Paperwhite 3, firmware 5.16.2.1.1:
 
 - Stock images: `/usr/share/blanket/screensaver/bg_ss00.png` … `bg_ss19.png`
   (plus `bg_kids_*` for Kindle Kids and `bg_kcblackbackground.jpg`).
