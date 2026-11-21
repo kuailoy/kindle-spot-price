@@ -42,14 +42,19 @@ every hour is a local file copy. On the autumn DST day the repeated hour shares 
 | Size | 1072 × 1448 | native Paperwhite 3 resolution (from `eips -i`) |
 | Format | 8-bit grayscale PNG | same as the stock `bg_ssNN.png` files |
 | Gray values | multiples of 17 | the panel has 16 levels; exact values avoid dithering |
-| Scale | 0–40 c/kWh + headroom | fixed, so days are comparable; higher bars are clipped with a value label |
+| Layout | drawn at 1448 × 1072, rotated 270° | landscape; the Kindle's top edge is on the left |
+| Scale | 0–20 c/kWh, or the next multiple of 5 above the day's peak | stable on normal days, like Helen's app |
 
-Gray mapping, one level per 4 c/kWh:
+Bar gray, one level per 4 c/kWh (no outlines, so the lightest bar is light gray, not white):
 
 ```
 price  0-4  4-8  8-12 12-16 16-20 20-24 24-28 28-32 32-36 36-40  40+
-level   15   14    12    11     9     8     6     5     3     2    0   (×17)
+level   12   11    10     9     8     7     6     5     4     2    0   (×17)
 ```
+
+Background bands: LOW (cheapest 2 h) is level 14, lighter than any bar. HIGH (most expensive
+2 h) is 4 levels lighter than the lightest bar inside it, limited to levels 12–13, so it never
+hides its bars and always differs from LOW.
 
 ## The Kindle lock screen
 

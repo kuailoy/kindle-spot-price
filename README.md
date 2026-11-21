@@ -4,11 +4,11 @@ Show today's Finnish electricity spot prices on the lock screen of a jailbroken
 Kindle Paperwhite 3, while still reading normally in the stock Kindle reader.
 
 <p align="center">
-  <img src="docs/preview-morning.png" width="300" alt="Lock screen preview (sample data)">
-  <img src="docs/preview-evening.png" width="300" alt="Lock screen preview late in the evening (sample data)">
+  <img src="docs/preview-morning.png" width="640" alt="Lock screen on an ordinary day (sample data)"><br>
+  <img src="docs/preview-evening.png" width="640" alt="Lock screen on a cheap day (sample data)">
 </p>
 
-<sub>Previews use made-up sample prices.</sub>
+<sub>Previews use made-up sample prices: an ordinary day and a cheap day. The Kindle is used in landscape.</sub>
 
 [中文说明](docs/README.zh-CN.md)
 
@@ -30,11 +30,43 @@ Details: [docs/how-it-works.md](docs/how-it-works.md)
 
 ## What it shows
 
-- **Today's 24 hourly prices** (average of the four 15-minute prices), in c/kWh including VAT
-- **Gray level per 4 c/kWh**, from white (< 4) to black (≥ 40); dashed lines at 8 c ("cheap") and 20 c ("expensive")
-- **Current price** in large type at the top right, with its hour (e.g. `now · 13:00–14:00`), so a stale lock screen is easy to spot; the current hour's bar is outlined and marked with a triangle
-- **Highest / lowest hour** of the day
-- **Best 2-hour laundry window**: the cheapest continuous 2 hours between 07:00 and 22:00 in the rest of the day; late in the evening it switches to tomorrow
+The image is drawn in landscape (Kindle turned with its top edge to the left):
+
+- **Left – now:** the current hour's price in large type, a label (CHEAP < 8, MODERATE < 20,
+  EXPENSIVE < 30, VERY EXPENSIVE), the highest and lowest 2-hour windows of the day, and the
+  best laundry window: the cheapest 2 whole hours between 07 and 22 in the rest of the day
+  (late in the evening it shows tomorrow's).
+- **Right – today:** 24 hourly prices (average of the four 15-minute prices), c/kWh incl. VAT.
+  - bar gray = absolute price, one level per 4 c/kWh, from light gray (< 4) to black (≥ 40)
+  - y axis 0–20 on ordinary days; above 20 it grows to the next multiple of 5
+  - **LOW / HIGH** bands mark the cheapest and most expensive 2 hours
+  - a dashed line with a **NOW** label marks the start of the current hour
+
+### Design notes
+
+The layout went through several rounds of iteration on the real device. The ideas that shaped it:
+
+- **One glance, two questions.** The left side answers *"should I use electricity now?"* (big number
+  plus a CHEAP / EXPENSIVE label); the right side answers *"when today?"* (the chart).
+  Everything else was cut.
+- **Designed for a 16-level e-ink panel.** Every gray is a multiple of 17, so nothing is dithered.
+  Bars have no outlines; the lightest bar is light gray instead of white, so even cheap hours
+  stay visible on the white background.
+- **Gray shows the absolute price, height shows the day's shape.** One gray level per 4 c/kWh
+  means a cheap day stays light even when its bars fill the chart.
+- **A stable scale.** 0–20 c/kWh on ordinary days, growing only on expensive days (inspired by
+  Helen's app), so the chart looks the same from day to day and a tall chart itself means
+  "expensive day".
+- **Highlight instead of annotate.** The cheapest and most expensive 2 hours are background
+  bands. LOW is always the lightest gray; HIGH is a few levels lighter than its own bars, so a
+  band never hides the bars inside it. The current hour is a dashed line at its start.
+- **Removed what didn't help:** legend, reference lines, average line, bar outlines, divider
+  lines and pointer arrows. Each was tried and dropped when the screen read better without it.
+- **Typography.** [Inter](https://rsms.me/inter/) and Inter Display in three sizes: hero
+  number, values, small labels. Times are written as hour ranges (`17 – 19`), x-axis ticks sit
+  on hour boundaries every 3 hours, and icons are centered on the digits' cap height.
+- **Landscape** gives the 24 bars room to breathe. The image is drawn at 1448 × 1072 and rotated
+  into the Kindle's portrait 1072 × 1448 lock-screen format.
 
 ### Update schedule
 
@@ -147,9 +179,12 @@ python render/render.py --input tests/fixtures/sample-winter.json --now 2026-11-
 # out/kindle.png, out/prices.json, out/frames/*.png + manifest.txt
 ```
 
-Settings such as the scale, gray step and laundry hours are constants at the top of
-`render/render.py`. Fonts: DejaVu Sans (Linux) or Arial (macOS); override with
-`KSP_FONT_REGULAR` / `KSP_FONT_BOLD`.
+Settings such as the gray step and laundry hours are constants at the top of
+`render/render.py`. Environment variables: `KSP_LAYOUT=portrait` for the older portrait design,
+`KSP_ROTATE=90` if your Kindle is held the other way round.
+
+The landscape design uses [Inter](https://rsms.me/inter/) (SIL Open Font License), included in
+`render/fonts/`.
 
 ## Roadmap
 

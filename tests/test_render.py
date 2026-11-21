@@ -76,9 +76,9 @@ def test_falls_back_to_tomorrow_late_in_the_evening():
 
 
 def test_gray_levels():
-    assert render.gray_for(0) == 255
-    assert render.gray_for(3.9) == 255
-    assert render.gray_for(4) < 255
+    assert render.gray_for(0) == 204          # lightest bar is light gray, not white
+    assert render.gray_for(3.9) == 204
+    assert render.gray_for(4) < 204
     assert render.gray_for(55) == 0
     assert all(g % 17 == 0 for g in render.GRAYS)
 
@@ -109,3 +109,22 @@ def test_frames_only_today_when_tomorrow_unknown(tmp_path):
     render.main(["--input", str(f), "--now", "2026-11-21T10:00", "--out-dir", str(tmp_path / "o")])
     names = (tmp_path / "o" / "frames" / "manifest.txt").read_text().split()
     assert len(names) == 24
+
+
+def test_extreme_windows_whole_hours():
+    day = date(2026, 11, 21)
+    prices = [5] * 3 + [1, 1] + [5] * 12 + [30, 30] + [5] * 5
+    slots = make_day(day, prices)
+    lo = render.extreme_window(slots, day, cheapest=True)
+    hi = render.extreme_window(slots, day, cheapest=False)
+    assert (lo.start.hour, lo.end.hour) == (3, 5)
+    assert (hi.start.hour, hi.end.hour) == (17, 19)
+
+
+def test_chart_scale():
+    H = render.Hour
+    t = datetime(2026, 11, 21, tzinfo=TZ)
+    assert render.chart_top_for([H(t, 4)]) == 20
+    assert render.chart_top_for([H(t, 19.9)]) == 20
+    assert render.chart_top_for([H(t, 31)]) == 35
+    assert render.chart_top_for([H(t, 52)]) == 55
