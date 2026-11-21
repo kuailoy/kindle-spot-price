@@ -93,7 +93,7 @@ Settings such as the scale, gray step and laundry hours are constants at the top
 ## Roadmap
 
 - [x] Pre-render hourly images; download once a day, switch hourly offline
-- [ ] Wake the Kindle every hour while it sleeps and redraw from local images (no Wi-Fi)
+- [ ] Wake the Kindle every hour (07–23, quiet at night) while it sleeps and redraw from local images, no Wi-Fi – [plan](docs/next-steps.md)
 - [ ] Start automatically after a reboot
 - [ ] Reuse `prices.json` on an ESP32-S3 + 7.5" e-ink desktop display
 - [ ] Fallback data source
