@@ -35,10 +35,10 @@
 
 电价提前一天就确定了，所以尽量让 Kindle 不用联网：
 
-1. **云端提前生成**：每天下午 GitHub Actions 为今天和明天的每个小时各画一张图，发布到 GitHub Pages。不需要自己的服务器
+1. **云端提前生成**：每天 14:23 到 21:23 之间，GitHub Actions 每小时运行一次，为今天和明天的每个小时各画一张图，发布到 GitHub Pages。不需要自己的服务器。GitHub 的定时任务可能推迟或跳过，所以多安排几次，只要有一次成功就够了
 2. **Kindle 每天下载一次**：晚上 18 点后连着 Wi-Fi 时，下载明天的图，删掉前一天的
 3. **整点离线换图**：每到整点，把对应的图复制到锁屏，不需要联网
-4. **锁屏期间定时唤醒**：硬件闹钟每个整点把休眠中的 Kindle 叫醒（默认 7 点到 23 点，夜里不打扰），1 秒左右刷新锁屏，然后自己睡回去。不开 Wi-Fi，也不会进入主界面
+4. **锁屏期间定时唤醒**：硬件闹钟每个整点把休眠中的 Kindle 叫醒（默认 7 点到 22 点，23 点到 7 点不打扰），1 秒左右刷新锁屏，然后自己睡回去。不开 Wi-Fi，也不会进入主界面
 
 锁屏图的替换方式：把内部存储里的一个文件夹"挂载"到系统锁屏图文件夹上，系统分区不做任何修改，重启后自动恢复原样。
 
@@ -62,7 +62,7 @@
 ```
 kindle/
 ├── scriptlets/
-│   ├── ss_on.sh      Lockscreen ON（开启）  → 拷进 Kindle 的 documents 文件夹
+│   ├── ss_on.sh      Lockscreen ON / Refresh（开启 / 刷新）→ 拷进 Kindle 的 documents 文件夹
 │   └── ss_off.sh     Lockscreen OFF（关闭） → 拷进 Kindle 的 documents 文件夹
 ├── sslive/
 │   ├── url.txt       你的 GitHub Pages 网址 → 拷进 Kindle 的 sslive 文件夹
@@ -92,7 +92,7 @@ kindle/
    ```
 5. **弹出 Kindle**：在 Finder 里点"推出"，再拔线。
 6. **锁屏设置**：在 Kindle 设置里关闭 **显示封面**（Display Cover），让锁屏使用系统自带的图片。
-7. **启动**：确认 Wi-Fi 已连接，在书库里点 **Lockscreen ON**。如果之前运行过旧版本，先点一次 **Lockscreen OFF**。屏幕上会显示类似 `Lockscreen ON. Showing: 20261121-13.png` 的信息。
+7. **启动**：确认 Wi-Fi 已连接，在书库里点 **Lockscreen ON / Refresh**。如果之前运行过旧版本，先点一次 **Lockscreen OFF**。屏幕上会显示类似 `Lockscreen ON. Showing: 20261121-13.png` 的信息。
 
 #### 检查是否生效
 
@@ -109,10 +109,10 @@ kindle/
 #### 日常使用
 
 - 不需要任何操作：Kindle 醒着时会自动下载和换图
-- **重启后**会恢复成原来的锁屏，点一次 **Lockscreen ON** 即可
+- **重启后**会恢复成原来的锁屏，点一次 **Lockscreen ON / Refresh** 即可
 - **Lockscreen OFF**：恢复原来的锁屏，停止后台脚本，并取消整点唤醒闹钟
 - **更新脚本到新版本**：重复安装步骤 3、5、7
-- 再点一次 **Lockscreen ON** 会重新下载所有图片（比如图片设计改了之后）
+- 再点一次 **Lockscreen ON / Refresh** 会重新下载所有图片（比如图片设计改了之后）
 - **卸载**：点 **Lockscreen OFF**，删掉 `ss_on.sh`、`ss_off.sh` 和 `sslive` 文件夹。内部存储的 `/var/local/sslive` 里会留下约 1.5 MB 已下载的图，不影响使用，想删可以通过 SSH 或 kTerm
 
 #### 可选：检查脚本

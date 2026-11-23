@@ -16,7 +16,11 @@ hour to do that copy and redraw the screen.
 | When (Finnish time) | What |
 |---|---|
 | ~14:00 | Nord Pool publishes tomorrow's prices |
-| 15:00, 16:00, 17:00, 20:00 (one hour later in summer) | GitHub Actions renders `frames/YYYYMMDD-HH.png` for today and tomorrow (up to 48 images, ~30 KB each) plus `frames/manifest.txt`, publishes them on GitHub Pages |
+| hourly 14:23–21:23 (one hour later in summer) | GitHub Actions renders `frames/YYYYMMDD-HH.png` for today and tomorrow (up to 48 images, ~30 KB each) plus `frames/manifest.txt`, publishes them on GitHub Pages |
+
+GitHub's scheduler is not punctual: runs are delayed under load and some are dropped without
+an error (with four slots a day, only one ran, about two hours late). Hence many slots at an
+unpopular minute; every run renders the full set, so one success per afternoon is enough.
 
 Each frame is complete for its hour: the "now" marker, the current price and the laundry
 window for the rest of that day are already drawn in.
@@ -30,9 +34,12 @@ Both are frozen while the Kindle sleeps and cost nothing then.
   tomorrow's images are not there yet. Needs Wi-Fi; at most one attempt every 30 minutes; waits
   up to 30 s for Wi-Fi to reconnect after a wake-up. Downloads only missing files, checks each
   one (PNG signature and 1072 × 1448 size), deletes the previous day's.
+- The hourly switch happens before any download attempt, so a missing Wi-Fi connection never
+  delays it.
 - **Switch** at every full hour and right after unlocking: copy the current hour's frame into
   the 20 lock-screen slots (`bg_ss00.png` … `bg_ss19.png`) of the bind-mounted folder.
-- Tapping **Lockscreen ON** re-downloads everything (useful after a design change).
+- Tapping **Lockscreen ON / Refresh** re-downloads everything (useful after a design change).
+- Images for past days are never downloaded, even if an outdated manifest still lists them.
 
 ## 3. Kindle locked: timed wake-up
 

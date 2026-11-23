@@ -79,14 +79,14 @@ network:
    and deletes yesterday's.
 3. **Switch offline (Kindle):** at each full hour it copies the right image into the lock screen.
 4. **Wake up while locked:** a hardware alarm wakes the sleeping Kindle at each full hour
-   (07–23 by default, quiet at night), it redraws the lock screen in about a second and goes
+   (07–22 by default, quiet at night), it redraws the lock screen in about a second and goes
    back to sleep. No Wi-Fi, no visible home screen.
 
 | When (Finnish time) | What happens |
 |---|---|
-| 15:00, 16:00, 17:00 (+ 20:00) | cloud renders today + tomorrow (one hour later in summer) |
+| hourly 14:23–21:23 | cloud renders today + tomorrow (one hour later in summer); GitHub may delay or skip some runs, one success is enough |
 | after 18:00, Kindle on Wi-Fi | downloads tomorrow's images |
-| every full hour, 07–23 | lock screen switches to the new hour, even while locked |
+| every full hour, 07–22 | lock screen switches to the new hour, even while locked |
 | 23:00–07:00 | no wake-ups (configurable in `sslive/config.txt`) |
 
 Details, measurements and the one known limitation (the Kindle stays awake ~95 s per wake-up):
@@ -111,7 +111,7 @@ Files in this repository:
 ```
 kindle/
 ├── scriptlets/
-│   ├── ss_on.sh      "Lockscreen ON"  - copy into the Kindle's documents/ folder
+│   ├── ss_on.sh      "Lockscreen ON / Refresh" - copy into the Kindle's documents/ folder
 │   └── ss_off.sh     "Lockscreen OFF" - copy into the Kindle's documents/ folder
 ├── sslive/
 │   ├── url.txt       your GitHub Pages address - copy into the Kindle's sslive/ folder
@@ -150,7 +150,7 @@ kindle/
 5. **Eject** the Kindle in Finder before unplugging.
 6. **Lock screen setting:** on the Kindle, turn **Display Cover** off, so the lock screen uses
    the built-in images.
-7. **Start:** make sure Wi-Fi is connected, open the library and tap **Lockscreen ON**.
+7. **Start:** make sure Wi-Fi is connected, open the library and tap **Lockscreen ON / Refresh**.
    If an older version was running, tap **Lockscreen OFF** first.
    The screen shows e.g. `Lockscreen ON. Showing: 20261121-13.png`.
 
@@ -170,11 +170,11 @@ downloaded: check Wi-Fi and `url.txt`, and look at `sslive/log.txt`.
 #### Everyday use
 
 - Nothing to do: images are downloaded and switched automatically while the Kindle is awake.
-- **After a reboot** the stock lock screen is back; tap **Lockscreen ON** once.
+- **After a reboot** the stock lock screen is back; tap **Lockscreen ON / Refresh** once.
 - **Lockscreen OFF** restores the stock lock screen, stops the updater and cancels the hourly
   wake-up alarm.
 - **Updating** to a new version of the scripts: repeat steps 3, 5 and 7.
-- Tapping **Lockscreen ON** again re-downloads all images (useful after the image design changed).
+- Tapping **Lockscreen ON / Refresh** again re-downloads all images (useful after the image design changed).
 - **Uninstall:** tap **Lockscreen OFF**, delete `ss_on.sh`, `ss_off.sh` and the `sslive` folder.
   About 1.5 MB of downloaded images stays in `/var/local/sslive` on internal storage
   (harmless; it can be removed over SSH or kTerm).
@@ -205,7 +205,7 @@ The landscape design uses [Inter](https://rsms.me/inter/) (SIL Open Font License
 ## Roadmap
 
 - [x] Pre-render hourly images; download once a day, switch hourly offline
-- [x] Wake the Kindle every hour (07–23, quiet at night) while it sleeps and redraw from local images, no Wi-Fi – [details](docs/update-strategy.md)
+- [x] Wake the Kindle every hour (07–22, quiet at night) while it sleeps and redraw from local images, no Wi-Fi – [details](docs/update-strategy.md)
 - [ ] Shorten the ~95 s awake time after each timed wake-up
 - [ ] Start automatically after a reboot
 - [ ] Reuse `prices.json` on an ESP32-S3 + 7.5" e-ink desktop display

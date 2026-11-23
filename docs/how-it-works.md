@@ -14,9 +14,10 @@
 
 ## Schedule
 
-The workflow runs at 13:05, 14:05, 15:05 and 18:05 UTC, i.e. 15–17 (+20) Finnish time in
-winter and one hour later in summer. All runs are after the ~14:00 publication of tomorrow's
-prices; the extra run covers delays. The Kindle starts looking for tomorrow's images at 18:00.
+The workflow runs hourly at :23 from 12 to 19 UTC, i.e. 14:23–21:23 Finnish time in winter
+and one hour later in summer. GitHub delays scheduled runs under load and sometimes drops
+them (observed: only one run a day, about two hours late, with four scheduled slots), so the
+schedule has many slots at an unpopular minute; every run renders the full set. The Kindle starts looking for tomorrow's images at 18:00.
 If it was not used in the evening, the first wake-up on Wi-Fi the next day finds the current
 hour's image missing and downloads it (the site still holds today's images from the previous
 afternoon's run).
@@ -118,6 +119,6 @@ replaces a working image.
 
 ### Limits of the current version
 
-- The bind mount and the updater do not survive a reboot; run **Lockscreen ON** again.
+- The bind mount and the updater do not survive a reboot; run **Lockscreen ON / Refresh** again.
 - Timed wake-ups while locked: see [update-strategy.md](update-strategy.md), including the
   ~95 s awake time per wake-up.

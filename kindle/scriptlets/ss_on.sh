@@ -1,5 +1,5 @@
 #!/bin/sh
-# Name: Lockscreen ON
+# Name: Lockscreen ON / Refresh
 # Author: kindle-spot-price
 #
 # Shows hourly electricity price images on the native lock screen.
@@ -138,8 +138,10 @@ fetch() {
         return 1
     fi
     got=0; bad=0
+    today=$(date +%Y%m%d)
     while read -r name; do
         case "$name" in [0-9]*-[0-9][0-9].png) ;; *) continue ;; esac
+        [ "${name%%-*}" -lt "$today" ] 2>/dev/null && continue   # never fetch past days
         [ -z "$FORCE" ] && [ -f "$FRAMES/$name" ] && continue
         if curl -fsSL --max-time 60 -o "$FRAMES/$name.tmp" "${url}frames/$name" \
            && valid_png "$FRAMES/$name.tmp"; then
@@ -157,6 +159,8 @@ fetch() {
         d=$(basename "$f"); d=${d%%-*}
         [ "$d" -lt "$today" ] 2>/dev/null && rm -f "$f"
     done
+    # new files may replace the image being shown (e.g. a new design): show them
+    [ "$got" -gt 0 ] && rm -f "$BASE/applied"
     log "download: $got new, $bad failed"
 }
 
@@ -173,6 +177,8 @@ apply_current() {
 
 tick() {
     mkdir "$LOCK" 2>/dev/null || return 0           # another tick is running
+    # show the right hour first (no network needed), then download if needed
+    apply_current
     if [ -n "$FORCE" ] || need_fetch; then
         # right after a wake-up Wi-Fi needs a few seconds to reconnect
         n=0
@@ -318,6 +324,10 @@ if [ -f "$PIDS" ]; then
     while read -r p; do kill "$p" 2>/dev/null; done < "$PIDS"
     rm -f "$PIDS"
 fi
+# leftovers of the wake test tools (they listen to every powerd event: '*')
+for p in $(ps | grep -F "com.lab126.powerd *" | grep -v grep | awk '{print $1}'); do
+    kill "$p" 2>/dev/null
+done
 rmdir "$BASE/lock" 2>/dev/null
 rm -f "$BASE/applied" "$BASE/last_fetch"
 
